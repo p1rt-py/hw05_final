@@ -116,7 +116,7 @@ class PostViewsTests(TestCase):
                              kwargs={'post_id': self.post.id})
         self.assert_True(Comment.objects.filter(
             text=form_data['text']).exists()
-                         )
+            )
 
     def test_add_comment_guest2(self):
         comments_count = Comment.objects.count()
@@ -130,7 +130,7 @@ class PostViewsTests(TestCase):
                 kwargs={'post_id': self.post.id}),
             data=form_data,
             follow=True
-             )
+            )
         self.assertEqual(Comment.objects.count(), comments_count)
 
     def test_index_page_cache_work_correct(self):
