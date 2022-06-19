@@ -89,13 +89,13 @@ class PostCreateFormTests(TestCase):
          )
         self.assertRedirects(response, reverse('posts:profile',
                                                kwargs={'username': self.user}))
-        self.assertEqual(Post.objects.count(), post_count +1)
+        self.assertEqual(Post.objects.count(), post_count + 1)
         self.assertTrue(Post.objects.filter(
             text='Тестовый текст 2',
             group=self.group.id,
             image='posts/small.gif'
         ).exists()
-                       )
+        )
 
     def test_authorized_edit_post(self):
         post = Post.objects.get(pk=self.group.id)

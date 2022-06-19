@@ -22,3 +22,4 @@ class CommentForm(forms.ModelForm):
         model = Comment
         fields = ('text', 'author')
         exclude = ['author']
+        

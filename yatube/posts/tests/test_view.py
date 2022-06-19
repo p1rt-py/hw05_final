@@ -130,7 +130,7 @@ class PostViewsTests(TestCase):
                 kwargs={'post_id': self.post.id}),
             data=form_data,
             follow=True
-            )
+             )
         self.assertEqual(Comment.objects.count(), comments_count)
 
     def test_index_page_cache_work_correct(self):
@@ -150,6 +150,7 @@ class PostViewsTests(TestCase):
         self.assertEqual(response.content['page_obj'][0],
                          response2.content['page_obj'][0]
                          )
+
 
 class PaginatorViewsTest(TestCase):
     @classmethod

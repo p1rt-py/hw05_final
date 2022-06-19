@@ -102,14 +102,18 @@ def add_comment(request, post_id):
         comment.save()
     return redirect('posts:post_detail', post_id=post_id)
 
+
 @login_required
 def follow_index(request):
     user = Follow.objects.filter(user=request.user).select_related('author')
     following_list = User.objects.filter(following__in=user)
-    list_posts = Post.objects.filter(author__in=following_list).select_related('author', 'group')
+    list_posts = Post.objects.filter(
+        author__in=following_list).select_related('author', 'group'
+                                                  )
     page_obj = pagin(request, list_posts)
     context = {'page_obj': page_obj}
     return render(request, 'posts/follow.html', context)
+
 
 @login_required
 def profile_follow(request, username):
@@ -117,6 +121,7 @@ def profile_follow(request, username):
     if request.user != author:
         Follow.objects.create(user=request.user, author=author)
     return redirect('posts:profile', username=username)
+
 
 @login_required
 def profile_unfollow(request, username):
