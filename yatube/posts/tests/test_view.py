@@ -1,9 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
-from http import HTTPStatus
-
-from posts.models import Group, Post, Comment
+from posts.models import Group, Post, Follow
+from django.core.cache import cache
 
 User = get_user_model()
 
@@ -12,144 +11,141 @@ class PostViewsTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.guest_client = Client()
         cls.user = User.objects.create_user(username='auth')
-        cls.authorized_client = Client()
-        cls.authorized_client.force_login(cls.user)
         cls.group = Group.objects.create(
             title='Тестовый заголовок',
             slug='test-slug',
             description='Тестовое описание'
+
         )
+
         cls.post = Post.objects.create(
             text='Тестовый текст',
             author=cls.user,
             group=cls.group,
         )
 
-    def test_index_page_show_correct_context(self):
-        """Шаблон index сформирован с правильным контекстом
-        Созданный пост появился на стартовой странице"""
-        response = self.authorized_client.get(reverse('posts:index'))
-        self.assertIn('page_obj', response.context)
+        cls.no_follow_user = User.objects.create_user(username='biba')
+        cls.follow_user = User.objects.create_user(username='boba')
+        cls.follower = Follow.objects.create(
+            user=cls.follow_user, author=cls.user)
+
+    def setUp(self):
+        self.guest_client = Client()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+        self.follower_client = Client()
+        self.follower_client.force_login(self.follow_user)
+        self.no_follower_client = Client()
+        self.no_follower_client.force_login(self.no_follow_user)
+
+    def context_test(self, response):
         post = response.context['page_obj'][0]
-        index_text_0 = post.text
-        index_author_0 = post.author.username
-        index_group_slug_0 = post.group.slug
-        self.assertEqual(index_text_0, self.post.text)
-        self.assertEqual(index_author_0, self.user.username)
-        self.assertEqual(index_group_slug_0, self.group.slug)
+        self.assertEqual(post.text, self.post.text)
+        self.assertEqual(post.author.username, self.user.username)
+        self.assertEqual(post.group.slug, self.group.slug)
+        self.assertEqual(post.image, self.post.image)
+
+    def test_index_page_show_correct_context(self):
+        """
+        Шаблон index сформирован с правильным контекстом.
+        Созданный пост появился на стартовой странице.
+        """
+        response = self.authorized_client.get(reverse('posts:index'))
+        self.context_test(response)
 
     def test_group_list_page_show_correct_context(self):
-        """Шаблон group_list сформирован с правильным контекстом
-        Созданный пост появился на странице группы"""
+        """
+        Шаблон group_list сформирован с правильным контекстом
+        Созданный пост появился на странице группы
+        """
         response = self.authorized_client.get(reverse(
             'posts:group_list', kwargs={'slug': self.group.slug}))
-        self.assertIn('page_obj', response.context)
-        post = response.context['page_obj'][0]
-        index_text_0 = post.text
-        index_author_0 = post.author.username
-        index_group_slug_0 = post.group.slug
-        self.assertEqual(index_text_0, self.post.text)
-        self.assertEqual(index_author_0, self.user.username)
-        self.assertEqual(index_group_slug_0, self.group.slug)
+        self.context_test(response)
 
     def test_profile_page_show_correct_context(self):
-        """Шаблон profile сформирован с правильным контекстом
-        Созданный пост появился на странице профиля автора"""
+        """
+        Шаблон profile сформирован с правильным контекстом
+        Созданный пост появился на странице профиля автора
+        """
         response = self.authorized_client.get(reverse(
             'posts:profile', kwargs={'username': self.user.username}))
-        self.assertIn('page_obj', response.context)
-        post = response.context['page_obj'][0]
-        index_text_0 = post.text
-        index_author_0 = post.author.username
-        index_group_slug_0 = post.group.slug
-        self.assertEqual(index_text_0, self.post.text)
-        self.assertEqual(index_author_0, self.user.username)
-        self.assertEqual(index_group_slug_0, self.group.slug)
+        self.context_test(response)
 
     def test_post_detail_page_show_correct_context(self):
-        """Шаблон post_detail сформирован с правильным контекстом
-         информация поста появляется на отдельной странице"""
+        """
+        Шаблон post_detail сформирован с правильным контекстом
+        Подробная информация поста появляется на отдельной странице
+        """
         response = self.authorized_client.get(reverse(
             'posts:post_detail', kwargs={'post_id': self.post.id}))
-        self.assertEqual(response.context.get('post').text, self.post.text)
+        context_post = response.context.get('post')
+        self.assertEqual(context_post.text, self.post.text)
+        self.assertEqual(context_post.image, self.post.image)
+
+    def test_index_cache1(self):
+        """Тест кэша 1"""
+        post = Post.objects.create(
+            author=self.user,
+            text='Новый тестовый пост'
+        )
+        response = self.authorized_client.get(reverse('posts:index'))
+        temp = response.content
+        post.delete()
+        response = self.authorized_client.get(reverse('posts:index'))
+        self.assertEqual(response.content, temp)
+        cache.clear()
+        response = self.authorized_client.get(reverse('posts:index'))
+        self.assertNotEqual(response.content, temp)
+
+    def test_index_cache2(self):
+        """Тест кэша2"""
+        post = Post.objects.create(
+            text='Тестовый пост',
+            author=self.user,
+        )
+        response = self.authorized_client.get(reverse('posts:index'))
+        Post.objects.filter(pk=post.pk).delete()
+        response2 = self.authorized_client.get(reverse('posts:index'))
+        self.assertEqual(response.content, response2.content)
 
     def test_follow_index_show_cont(self):
         """Шаблон follow сформирован с правильным контекстом."""
-        response = self.authorized_client.get(reverse('posts:follow_index'))
-        post_follow_count = len(response.context['page_obj'])
-        new_author = User.objects.create_user(username='new')
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        count_post_follower = len(response.context['page_obj'])
+        response = self.no_follower_client.get(reverse('posts:follow_index'))
+        count_post_no_follower = len(response.context['page_obj'])
         Post.objects.create(
-            author=new_author,
+            author=self.user,
             text='Новый тестовый пост',
+            group=self.group,
         )
-        self.authorized_client.get(reverse('posts:follow',
-                                           new_author.username))
-        response = self.authorized_client.get(reverse(
-            'posts:follow_index'))
+        response = self.follower_client.get(reverse('posts:follow_index'))
         self.assertEqual(
-            len(response.context['page_obj']),
-            post_follow_count + 1)
+            len(response.context['page_obj']), count_post_follower + 1)
+        response = self.no_follower_client.get(reverse('posts:follow_index'))
+        self.assertEqual(
+            len(response.context['page_obj']), count_post_no_follower)
 
-    def test_add_comment_guest(self):
-        """Пользователь не может комментировать неавторизованным"""
-        form_data = {'next': 'Текст комментария'}
-        response = self.guest_client.post(
-            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
-            data=form_data
-        )
-        self.assertEqual(response.status_code, HTTPStatus.FOUND)
-        self.assertNotEqual(response.context_decode(), form_data['text'])
+    def test_user_follow(self):
+        """Проверка на создание подписчика."""
+        response = self.no_follower_client.get(reverse('posts:follow_index'))
+        count_post_follower = len(response.context['page_obj'])
+        response = self.no_follower_client.get(reverse(
+            'posts:profile_follow', kwargs={'username': self.user}))
+        response = self.no_follower_client.get(reverse('posts:follow_index'))
+        self.assertFalse(count_post_follower)
+        self.assertTrue(len(response.context['page_obj']))
 
-    def test_add_comment(self):
-        """Комментировать посты может только авторизованный"""
-        comments_count = Comment.objects.count()
-        form_data = {'text': 'Текст комментария'}
-        response = self.authorized_client.post(
-            reverse('posts:add_comment', kwargs={'post_id': self.post.id}),
-            data=form_data,
-            follow=True
-        )
-        self.assertEqual(Comment.objects.count(), comments_count + 1)
-        self.assertRedirects(response, reverse('posts:post_detail'),
-                             kwargs={'post_id': self.post.id})
-        self.assert_True(Comment.objects.filter(
-            text=form_data['text']).exists()
-        )
-
-    def test_add_comment_guest2(self):
-        comments_count = Comment.objects.count()
-        form_data = {
-            'text': 'Текст комментария'
-            'author: self.guest_client'
-        }
-        self.guest_client.post(
-            reverse(
-                'posts:add_comment',
-                kwargs={'post_id': self.post.id}),
-            data=form_data,
-            follow=True
-        )
-        self.assertEqual(Comment.objects.count(), comments_count)
-
-    def test_index_page_cache_work_correct(self):
-        """Кэширование постов на главной странице"""
-        post = Post.objects.creare(
-            text='Test cache', author={PostViewsTests.user}
-        )
-        response = self.authorized_client.get(
-            reverse('posts:index')
-        )
-        post.delete()
-        response2 = self.authorized_client.get(
-            reverse('posts:index')
-        )
-        self.assertIn('page_obj', response.content, 'Не найден'),
-        self.assertIn('page_obj', response2.content, 'Не найден')
-        self.assertEqual(response.content['page_obj'][0],
-                         response2.content['page_obj'][0]
-                         )
+    def test_follower_delete_to_user(self):
+        """Проверка на удаление подписчика."""
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        count_post_follower = len(response.context['page_obj'])
+        response = self.follower_client.get(
+            reverse('posts:profile_unfollow', kwargs={'username': self.user}))
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        self.assertTrue(count_post_follower)
+        self.assertFalse(len(response.context['page_obj']))
 
 
 class PaginatorViewsTest(TestCase):
@@ -160,9 +156,17 @@ class PaginatorViewsTest(TestCase):
         cls.user = User.objects.create_user(username='auth')
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
-        Post.objects.bulk_create(
-            [Post(text='text', author=cls.user) for i in range(13)]
+
+        cls.group = Group.objects.create(
+            title='Тестовый заголовок',
+            slug='test-slug',
+            description='Тестовое описание'
+
         )
+
+        objs = [Post(author=cls.user, text=f'Тестовый пост {i}',
+                group=cls.group) for i in range(13)]
+        Post.objects.bulk_create(objs, 13)
 
     def test_paginator_first_page_contains_10_posts(self):
         """Колличество постов на первой странице равно 10"""

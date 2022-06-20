@@ -1,7 +1,9 @@
-{% extends 'base.html' %}
-{% block title %}Подписка{% endblock %}
+{% extends "base.html" %}
+{% block title %}
+Посты авторов, на которых подписан текущий пользователь
+{% endblock %}
 {% block content %}
-  {% include 'posts/includes/switcher.html' %}
+{% include 'posts/includes/switcher.html' with follow=True %}
   {% for post in page_obj %}
     {% if post.group %}
       <a href="{% url 'posts:group_list' post.group.slug %}">

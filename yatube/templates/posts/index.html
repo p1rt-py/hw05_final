@@ -1,26 +1,34 @@
-{% extends "base.html" %}
-{% load thumbnail %}
+{% extends 'base.html' %}
 {% block title %}Последние обновления на сайте{% endblock %}
-{% block header %}Последние обновления на сайте{% endblock %}
 {% block content %}
-{% include 'posts/includes/switcher.html' %}
+  {% load thumbnail %}
+  {% load cache %}
+  <h1>Последние обновления на сайте</h1>
+  {% cache 20 index_page %}
   {% for post in page_obj %}
     <article>
-              <ul>
-                <li>Автор: {{ post.author.get_full_name }}</li>
-                <li>Дата публикации: {{ post.pub_date|date:"d E Y" }}</li>
-              </ul>
-             {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
-            <img class="card-img my-2" src="{{ im.url }}">
-            {% endthumbnail %}
-              <p>
-                  {{ post.text|linebreaks }}
-              </p>
-              {% if post.group %}
-                <a href="{% url 'posts:group_list' post.group.slug %}">#{{ post.group.title }}</a>
-                {% endif %}
+      <ul>
+        <li>
+          Автор: {% firstof post.author.get_full_name post.author.username %}
+          <a href="{% url 'posts:profile' post.author.username %}">
+            все посты пользователя
+          </a>
+        </li>
+        <li>
+          Дата публикации: {{ post.pub_date|date:"d E Y" }}
+        </li>
+      </ul>
+      {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
+        <img class="card-img my-2" src="{{ im.url }}">
+      {% endthumbnail %}
+      <p>{{ post.text|linebreaksbr }}</p>
+      <p><a href="{% url 'posts:post_detail' post.pk %}">подробная информация</a></p>
     </article>
-      {% if not forloop.last %}<hr>{% endif %}
+    {% if post.group %}
+      <a href="{% url 'posts:group_list' post.group.slug %}">Все записи группы {{ post.group.title }}</a>
+    {% endif %}
+    {% if not forloop.last %}<hr>{% endif %}
   {% endfor %}
-    {% include 'includes/paginator.html' %}
+  {% endcache %}
+  {% include 'includes/paginator.html' %}
 {% endblock %}

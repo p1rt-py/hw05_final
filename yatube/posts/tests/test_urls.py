@@ -87,3 +87,8 @@ class PostURLTests(TestCase):
         """Страница /added/ использует шаблон deals/added.html."""
         response = self.authorized_client.get('/create/')
         self.assertTemplateUsed(response, 'posts/create_post.html')
+
+    def test_urls_authorized_correct_template(self):
+        response = self.authorized_client.get('/follow/')
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertTemplateUsed(response, 'posts/follow.html')
