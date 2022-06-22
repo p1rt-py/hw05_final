@@ -107,7 +107,7 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     user = Follow.objects.filter(user=request.user).select_related('author')
-    following_list = User.objects.filter(following__in=user)
+    User.objects.filter(following__in=user)
     list_posts = Post.objects.filter(
         author__following__user=request.user
     ).select_related('author', 'group')
