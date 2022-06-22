@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+
 from posts.models import Comment, Group, Post
 
 from ..forms import PostForm
@@ -75,8 +76,8 @@ class PostFormTests(TestCase):
         self.assertEqual(Post.objects.count(), post_count + 1)
         self.assertTrue(
             Post.objects.filter(
-                text='Текст формы',
-                group=self.group.pk,
+                text=form_data['text'],
+                group=form_data['group'],
                 author=self.user,
                 image='posts/small.gif'
             ).exists()
@@ -102,8 +103,8 @@ class PostFormTests(TestCase):
             'posts:post_detail', args=(self.post.id,)))
         self.assertEqual(Post.objects.count(), post_count)
         self.assertTrue(Post.objects.filter(
-            text='Обновленный текст',
-            group=self.group,
+            text=form_data['text'],
+            group=form_data['group'],
             author=self.user,
             image='posts/small_1.gif'
         ).exists())

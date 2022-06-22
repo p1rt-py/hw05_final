@@ -29,12 +29,15 @@ def group_list(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
+    user = get_object_or_404(User, username=username)
     posts = author.posts.select_related('author').all()
     page_obj = pagin(request, posts)
+    following = Follow.objects.filter(user=user, author=author).exists()
     context = {
         'author': author,
         'posts': posts,
         'page_obj': page_obj,
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
@@ -42,12 +45,10 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     posts_count = post.author.posts.count()
-    author = post.author.get_full_name
     comments = post.comments.all()
     form = CommentForm(request.POST or None)
     context = {
         'post': post,
-        'author': author,
         'posts_count': posts_count,
         'form': form,
         'comments': comments
@@ -108,8 +109,8 @@ def follow_index(request):
     user = Follow.objects.filter(user=request.user).select_related('author')
     following_list = User.objects.filter(following__in=user)
     list_posts = Post.objects.filter(
-        author__in=following_list).select_related('author', 'group'
-                                                  )
+        author__following__user=request.user
+    ).select_related('author', 'group')
     page_obj = pagin(request, list_posts)
     context = {'page_obj': page_obj}
     return render(request, 'posts/follow.html', context)
@@ -132,7 +133,5 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    is_follower = Follow.objects.filter(user=request.user, author=author)
-    if is_follower.exists():
-        is_follower.delete()
+    Follow.objects.filter(user=request.user, author=author).delete()
     return redirect('posts:profile', username=author)

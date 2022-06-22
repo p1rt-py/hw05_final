@@ -3,7 +3,7 @@
 {% block title %}Записи сообщества{{ group.title }}{% endblock %}
 {% block content %}
         <h1>{{ group.title }}</h1>
-        <p>{{group.description|linebreaks }}</p>
+        <p>{{ group.description|linebreaks }}</p>
         {% for post in posts %}
             <article>
                 <ul>

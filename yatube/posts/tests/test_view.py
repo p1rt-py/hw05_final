@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
+
 from posts.models import Follow, Group, Post
 
 User = get_user_model()
@@ -166,7 +167,7 @@ class PaginatorViewsTest(TestCase):
 
         objs = [Post(author=cls.user, text=f'Тестовый пост {i}',
                 group=cls.group) for i in range(13)]
-        Post.objects.bulk_create(objs, 13)
+        Post.objects.bulk_create(objs)
 
     def test_paginator_first_page_contains_10_posts(self):
         """Колличество постов на первой странице равно 10"""
