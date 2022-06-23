@@ -29,10 +29,14 @@ def group_list(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    user = get_object_or_404(User, username=username)
     posts = author.posts.select_related('author').all()
     page_obj = pagin(request, posts)
-    following = Follow.objects.filter(user=user, author=author).exists()
+    following = False
+    if request.user.is_authenticated:
+        following = Follow.objects.filter(
+            user=request.user,
+            author=author
+        ).exists()
     context = {
         'author': author,
         'posts': posts,
@@ -106,8 +110,6 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    user = Follow.objects.filter(user=request.user).select_related('author')
-    User.objects.filter(following__in=user)
     list_posts = Post.objects.filter(
         author__following__user=request.user
     ).select_related('author', 'group')

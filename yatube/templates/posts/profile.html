@@ -9,7 +9,8 @@
    Все посты пользователя {{ post.author.get_full_name }}
 </h1>
 <h3>Всего постов: {{ post_count }}</h3>
-{% if following %}
+{%  if request.user.is_authenticated and request.user != author %}
+  {% if following %}
     <a
       class="btn btn-lg btn-light"
       href="{% url 'posts:profile_unfollow' author.username %}" role="button"
@@ -23,7 +24,8 @@
       >
         Подписаться
       </a>
-   {% endif %}
+  {% endif %}
+{% endif %}
 </div>
 {% for post in page_obj %}
 <article>
